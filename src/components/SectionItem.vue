@@ -1,6 +1,6 @@
 <template>
   <div class="section-item">
-    <div class="section-item__title" @click="collapsed = !collapsed">
+    <div class="section-item__title" @click="emit('toggle')">
       <div class="section-item__label">
         Section {{ index + 1 }}: {{ section.name }}
       </div>
@@ -9,7 +9,7 @@
       </div>
     </div>
 
-    <div v-if="!collapsed || allDone" class="section-item__lessons">
+    <div v-if="!collapsed" class="section-item__lessons">
       <div
         v-for="lesson in section.lessons"
         :class="{
@@ -37,17 +37,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { TSection } from "../Config";
+import { computed } from "vue";
+import { TLesson, TSection } from "../Config";
 
 const emit = defineEmits(["select-lesson", "check"]);
 
-const collapsed = ref(false);
-
 const props = defineProps<{
   section: TSection;
+  lastLesson?: TLesson;
   index: number;
   currentLessonName?: string;
+  collapsed: boolean;
 }>();
 
 const sectionDuration = computed(() => {
@@ -57,10 +57,6 @@ const sectionDuration = computed(() => {
   });
 
   return dur;
-});
-
-const allDone = computed(() => {
-  return props.section.lessons.every((lesson) => lesson.done);
 });
 
 const getTimeFromSeconds = (duration: number) => {

@@ -1,10 +1,8 @@
 import {
   existsSync,
   readdirSync,
-  readFile,
   readFileSync,
   statSync,
-  writeFile,
   writeFileSync,
 } from "node:fs";
 
@@ -14,16 +12,17 @@ export type TLesson = {
   path: string;
   name: string;
   done: boolean;
+  subtitles: string;
   duration: number;
 };
 
 export type TSection = {
   name: string;
   lessons: TLesson[];
-  done: boolean;
 };
 export type TConfig = {
   courseName: string;
+  lastLesson?: TLesson;
   sections: TSection[];
 };
 
@@ -31,7 +30,6 @@ export class Config {
   basePath: string;
   config?: TConfig;
   protected parsedDir?: TSection[];
-  lastLesson?: TLesson;
 
   constructor(basePath: string) {
     this.basePath = basePath;
@@ -59,23 +57,32 @@ export class Config {
 
       if (isDir) {
         const sectionDir = readdirSync(sectionPath, { withFileTypes: true });
+        const subtitles = sectionDir.filter((file) =>
+          ["srt", "vtt"].includes(file.name.split(".")[1])
+        );
         const lessons = sectionDir
           .filter((file) =>
             ["mp4", "avi", "mkv"].includes(file.name.split(".")[1])
           )
           .map((file) => {
-            const fileBuffer = readFileSync(file.parentPath + "/" + file.name);
+            const fileBuffer = readFileSync(
+              path.resolve(file.parentPath, file.name)
+            );
             const duration = this.getMp4Duration(fileBuffer);
+            const subs = subtitles.find((sub) =>
+              sub.name.split(".")[0].includes(file.name.split(".")[0])
+            );
 
             return {
               name: file.name,
               path: file.parentPath,
               duration: Math.round(duration),
+              subtitles: subs ? path.resolve(subs?.parentPath, subs.name) : "",
               done: false,
             };
           });
 
-        sections.push({ name: file, lessons, done: false });
+        sections.push({ name: file, lessons });
       }
     }
 
@@ -101,20 +108,26 @@ export class Config {
       buffer.indexOf(Buffer.from(Buffer.from("mvhd").toString("hex"), "hex")) +
       4;
 
-    // const version = Buffer.from(
-    //   buffer.buffer.slice(startIndex, startIndex + 1)
-    // ).readInt8();
+    const version = Buffer.from(
+      buffer.buffer.slice(startIndex, startIndex + 1)
+    ).readIntBE(0, 1);
 
-    const duration = Buffer.from(
-      buffer.buffer.slice(startIndex + 16, startIndex + 20)
-    ).readInt32BE();
-    const timeScale = Buffer.from(
-      buffer.buffer.slice(startIndex + 12, startIndex + 16)
-    ).readInt32BE();
-    return duration / timeScale;
-  }
-
-  setLastLesson(lesson: TLesson) {
-    this.lastLesson = lesson;
+    if (version === 0) {
+      const duration = Buffer.from(
+        buffer.buffer.slice(startIndex + 16, startIndex + 20)
+      ).readInt32BE();
+      const timeScale = Buffer.from(
+        buffer.buffer.slice(startIndex + 12, startIndex + 16)
+      ).readInt32BE();
+      return duration / timeScale;
+    } else {
+      // const duration = Buffer.from(
+      //   buffer.buffer.slice(startIndex + 20, startIndex + 24)
+      // ).readBigInt64BE();
+      // const timeScale = Buffer.from(
+      //   buffer.buffer.slice(startIndex + 16, startIndex + 20)
+      // ).readBigInt64BE();
+      // return Number(duration / timeScale);
+    }
   }
 }
