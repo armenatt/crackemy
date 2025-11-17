@@ -35,7 +35,6 @@
   "dependencies": {
     "electron-squirrel-startup": "^1.0.1",
     "electron-store": "^11.0.2",
-    "srt-support-for-html5-videos": "^2.6.11",
     "vue": "^3.5.24"
   }
 }
