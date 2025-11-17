@@ -29,10 +29,10 @@
     "@electron/fuses": "^1.8.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "electron": "39.2.0",
+    "rollup": "^4.53.2",
     "vite": "^5.4.21"
   },
   "dependencies": {
-    "@rollup/rollup-darwin-x64": "^4.53.2",
     "electron-squirrel-startup": "^1.0.1",
     "electron-store": "^11.0.2",
     "srt-support-for-html5-videos": "^2.6.11",
