@@ -229,8 +229,7 @@ function getURL(path: string, type?: string) {
 
 <style>
 video {
-  height: 600px;
-  width: auto;
+  width: calc(100vw - 30vw);
 }
 .main {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -267,7 +266,7 @@ video {
 }
 
 .content-navigator {
-  min-width: 400px;
+  width: 30vw;
   height: 94vh;
   overflow-y: auto;
 }
