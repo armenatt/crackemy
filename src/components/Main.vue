@@ -21,8 +21,14 @@
     <div class="wrapper">
       <div class="content">
         <video v-show="currentLesson" ref="video" autoplay controls>
-          <track v-if="vttUrl" :src="vttUrl" ref="sub" default />
+          <track
+            v-if="currentLesson?.subtitles && vttUrl"
+            :src="vttUrl"
+            ref="sub"
+            default
+          />
         </video>
+        <div v-if="!currentLesson?.subtitles">Файл субтитров не обнаружен</div>
       </div>
       <div class="content-navigator">
         <SectionItem
@@ -37,10 +43,10 @@
           @toggle="onToggle(index)"
           @check="onCheck"
           @select-lesson="
-            async (lesson) => {
+            async (lesson: TLesson) => {
               currentLesson = lesson;
               await $nextTick();
-              play(currentLesson?.name, currentLesson?.path);
+              await play(currentLesson?.name, currentLesson?.path);
             }
           "
         >
@@ -98,26 +104,15 @@ onMounted(async () => {
     }
   };
 
-  if (props.config.lastLesson) {
-    const index = props.config.sections.findIndex((sec) =>
-      sec.lessons.find((les) => les.path === props.config.lastLesson?.path)
-    );
-    const res = document.querySelector(`.lesson[data-id='lesson-${index}']`);
-
-    await nextTick();
-    res?.scrollIntoView({ behavior: "smooth" });
-    currentLesson.value = props.config.lastLesson;
-
-    play(currentLesson.value.name, currentLesson.value.path);
-  }
+  await setLastLesson();
 });
 
 const initCollapsedSections = computed(() => {
   const ids = [];
 
-  for (let i = 0; i < props.config.sections.length; i++) {
+  for (let i = 0; i < configCopy.value.sections.length; i++) {
     if (
-      props.config.sections[i].lessons.every(
+      configCopy.value.sections[i].lessons.every(
         (les) => les.done && les.path !== props.config.lastLesson?.path
       )
     ) {
@@ -154,9 +149,18 @@ watch(
   () => initCollapsedSections.value,
   () => {
     collapsedSections.value = initCollapsedSections.value;
-    console.log(collapsedSections.value);
   },
-  { immediate: true }
+  { immediate: true, deep: true }
+);
+
+watch(
+  () => props.config,
+  async () => {
+    configCopy.value = JSON.parse(JSON.stringify(props.config));
+
+    await setLastLesson();
+  },
+  { deep: true }
 );
 
 const onToggle = (index: number) => {
@@ -179,26 +183,61 @@ const onCheck = ({ lesson, section }) => {
 
   configCopy.value.sections[currentSectionIndex].lessons[currentIndex].done =
     !configCopy.value.sections[currentSectionIndex].lessons[currentIndex].done;
-  window.api.send("save-config", JSON.stringify(configCopy.value), props.path);
+  saveConfig();
 };
 
-const play = async (name, path) => {
-  const url = getURL(path + "/" + name);
-  video.value!.src = url;
+const setLastLesson = async () => {
+  if (configCopy.value.lastLesson) {
+    currentLesson.value = configCopy.value.lastLesson;
+    const index = configCopy.value.sections.findIndex((sec) =>
+      sec.lessons.find((les) => les.path === configCopy.value.lastLesson?.path)
+    );
+    const lessonIndex = configCopy.value.sections[index].lessons.findIndex(
+      (les) => configCopy.value.lastLesson?.name === les.name
+    );
+    await nextTick();
 
-  const subUrl = getURL(currentLesson.value?.subtitles!);
-  const srt = await (await fetch(subUrl)).text();
+    const section = document.querySelector(
+      `.section-item[data-id='section-${index}']`
+    );
+    const lesson = section?.querySelector(
+      `.lesson[data-id='lesson-${lessonIndex}']`
+    );
 
-  const vtt = srtToVtt(srt);
-  const blob = new Blob([vtt]);
-  vttUrl.value = URL.createObjectURL(blob);
+    lesson?.scrollIntoView({ behavior: "smooth" });
+    await play(currentLesson.value.name, currentLesson.value.path);
+  } else {
+    currentLesson.value = configCopy.value.sections[0].lessons[0];
+    await play(currentLesson.value.name, currentLesson.value.path);
+  }
+};
+
+const play = async (name: string, path: string) => {
+  const url = getURL(window.api.resolve(path, name));
+
+  if (url) {
+    video.value!.src = url;
+  }
+
+  if (currentLesson.value?.subtitles) {
+    const subUrl = getURL(currentLesson.value?.subtitles);
+    if (!subUrl) {
+      vttUrl.value = "";
+      return;
+    }
+    const srt = await (await fetch(subUrl)).text();
+
+    const vtt = srtToVtt(srt);
+    const blob = new Blob([vtt]);
+    vttUrl.value = URL.createObjectURL(blob);
+  }
 
   if (sub.value) {
-    sub.value!.src = vttUrl.value;
+    sub.value.src = vttUrl.value;
   }
 
   configCopy.value.lastLesson = currentLesson.value;
-  window.api.send("save-config", JSON.stringify(configCopy.value), props.path);
+  saveConfig();
 };
 
 function srtToVtt(srt: string) {
@@ -219,11 +258,22 @@ function srtToVtt(srt: string) {
   return vtt;
 }
 
-function getURL(path: string, type?: string) {
-  const buffer = window.api.readFile(path);
-  const blob = new Blob([buffer], { type });
-  const url = URL.createObjectURL(blob);
-  return url;
+function saveConfig() {
+  window.api.send("save-config", JSON.stringify(configCopy.value), props.path);
+}
+
+function getURL(path: string) {
+  if (!path) {
+    return false;
+  }
+  try {
+    const buffer = window.api.readFile(path);
+    const blob = new Blob([buffer]);
+    const url = URL.createObjectURL(blob);
+    return url;
+  } catch (err) {
+    console.log(err);
+  }
 }
 </script>
 
@@ -269,5 +319,17 @@ video {
   width: 30vw;
   height: 94vh;
   overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  video {
+    width: 100%;
+  }
+  .wrapper {
+    flex-direction: column;
+  }
+  .content-navigator {
+    width: 100%;
+  }
 }
 </style>

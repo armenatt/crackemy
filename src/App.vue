@@ -12,14 +12,21 @@ import { TConfig } from "./Config";
 import DragAndDropPlug from "./components/DragAndDropPlug.vue";
 
 const coursePath = ref("");
-const config = ref<TConfig>();
+const config = ref<TConfig | null>(null);
 
 window.api.onDirectorySelected((path) => {
   coursePath.value = path;
-
   config.value = JSON.parse(
-    window.api.readFile(coursePath.value + "/config.json", "utf-8")
+    window.api.readFile(
+      window.api.resolve(coursePath.value, "config.json"),
+      "utf-8"
+    )
   );
+});
+
+window.api.onClose(() => {
+  coursePath.value = "";
+  config.value = null;
 });
 </script>
 

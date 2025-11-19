@@ -42,7 +42,7 @@ import { computed } from "vue";
 import { TLesson, TSection } from "../Config";
 import { getTimeFromSeconds } from "../helpers/getTimeFromSeconds";
 
-const emit = defineEmits(["select-lesson", "check"]);
+const emit = defineEmits(["select-lesson", "check", "toggle"]);
 
 const props = defineProps<{
   section: TSection;

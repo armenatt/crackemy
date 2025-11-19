@@ -21,9 +21,7 @@ const dragOver = ref(false);
 
 const onDragOver = (event: DragEvent) => {
   event.preventDefault();
-
   dragOver.value = true;
-  //   console.log(event);
 };
 
 const onDrop = async (event: DragEvent) => {
@@ -44,8 +42,8 @@ const onDrop = async (event: DragEvent) => {
 }
 
 .drag-and-drop__square {
-  height: 20vh;
-  width: 20vw;
+  height: 50vh;
+  width: 50vw;
   border: 2px dashed darkgray;
   display: flex;
   align-items: center;
@@ -54,5 +52,6 @@ const onDrop = async (event: DragEvent) => {
 
 .drag-and-drop__square--over {
   border: 3px dashed gray;
+  background-color: lightgray;
 }
 </style>

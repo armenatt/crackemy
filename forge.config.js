@@ -3,8 +3,10 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 
 module.exports = {
   packagerConfig: {
+    name: 'Crackemy',
     asar: true,
-    icon: 'src/assets/crackemy'
+    icon: 'src/assets/crackemy',
+    appBundleId: 'com.armenatt.crackemy'
   },
   rebuildConfig: {},
   makers: [

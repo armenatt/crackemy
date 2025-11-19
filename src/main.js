@@ -5,23 +5,23 @@ import { Config } from "./Config";
 import Store from "electron-store";
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 const isMac = process.platform === "darwin";
+
 if (started) {
   app.quit();
 }
 
 const store = new Store();
-
+let recentArray = store.get("recent");
 let mainWindow;
 const createWindow = () => {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
-    icon: path.resolve(__dirname, '/assets/crackemy.ico'),
+    icon: path.resolve(__dirname, "/assets/crackemy.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: true,
-      
     },
   });
 
@@ -65,65 +65,105 @@ app.on("window-all-closed", () => {
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
 
-const template = [
-  {
-    label: app.name,
-    submenu: [
-      {
-        role: "about",
-      },
-    ],
-  },
-  {
-    label: "File",
-    submenu: [
-      {
-        label: "Open folder",
-        click: async () => {
-          const result = await dialog.showOpenDialog({
-            properties: ["openDirectory"],
-          });
-          if (!result.canceled && !!result.filePaths.length) {
-            new Config(result.filePaths[0]);
-            const recent = store.get("recent");
-            if (!recent.includes(result.filePaths[0])) {
-              recent.push(result.filePaths[0]);
-              store.set("recent", recent);
-            }
-            mainWindow.webContents.send(
-              "directory-selected",
-              result.filePaths[0]
-            );
-          }
+function getRecentlyOpenSubmenu() {
+  recentArray = store.get("recent");
+  return recentArray
+    ? recentArray.map((path) => ({
+        label: path,
+        click: () => {
+          mainWindow.webContents.send("directory-selected", path);
+          appendRecentPath(path);
         },
-      },
+      }))
+    : undefined;
+}
 
-      {
-        label: "Recently open courses",
-        role: "fileMenu",
-        submenu:
-          Array.isArray(store.get("recent")) && store.get("recent").length > 0
-            ? store.get("recent").map((path) => ({
-                label: path,
-                click: () => {
-                  mainWindow.webContents.send("directory-selected", path);
-                },
-              }))
-            : undefined,
-      },
-      // isMac ? { role: "close" } : { role: "quit" },
-    ],
-  },
-];
+function getTemplateWithSubmenu(submenu) {
+  return [
+    isMac && {
+      label: app.name,
+      submenu: [
+        {
+          role: "about",
+        },
+      ],
+    },
+    {
+      label: "File",
+      submenu: [
+        {
+          label: "Recently open courses",
+          id: "recently",
+          role: "fileMenu",
+          submenu,
+        },
+        {
+          label: "Open folder",
+          click: async () => {
+            const result = await dialog.showOpenDialog({
+              properties: ["openDirectory"],
+            });
+            if (!result.canceled && !!result.filePaths.length) {
+              new Config(result.filePaths[0]);
+              mainWindow.webContents.send(
+                "directory-selected",
+                result.filePaths[0]
+              );
+              appendRecentPath(result.filePaths[0]);
+            }
+          },
+        },
+        {
+          label: "Close folder",
+          click: () => {
+            mainWindow.webContents.send("close");
+          },
+        },
+      ],
+    },
+  ];
+}
 
 ipcMain.on("directory-dropped", (event, arg) => {
   new Config(arg[0]);
+  appendRecentPath(arg[0]);
   mainWindow.webContents.send("directory-selected", arg[0]);
 });
 
-ipcMain.on('save-config', (event, arg) => {
-  Config.saveConfigJson(JSON.parse(arg[0]), arg[1])
-})
+function appendRecentPath(path) {
+  let recent = store.get("recent");
 
-const menu = Menu.buildFromTemplate(template);
+  if (!recent) {
+    store.set("recent", []);
+    return;
+  }
+  if (recent.includes(path)) {
+    recent = recent.filter((rec) => rec !== path);
+
+    recent.unshift(path);
+    store.set("recent", recent);
+    updateMenuItem("recently");
+
+    return;
+  }
+  recent.unshift(path);
+  store.set("recent", recent);
+
+  updateMenuItem("recently");
+}
+
+function updateMenuItem() {
+  const newMenu = Menu.buildFromTemplate(
+    getTemplateWithSubmenu(getRecentlyOpenSubmenu())
+  );
+  Menu.setApplicationMenu(newMenu);
+}
+
+ipcMain.on("save-config", (event, arg) => {
+  Config.saveConfigJson(JSON.parse(arg[0]), arg[1]);
+});
+
+const menu = Menu.buildFromTemplate(
+  getTemplateWithSubmenu(getRecentlyOpenSubmenu())
+);
 Menu.setApplicationMenu(menu);
