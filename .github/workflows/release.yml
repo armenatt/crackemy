@@ -1,12 +1,12 @@
-name: Publish Windows Release
+name: Publish Windows and macOS Release
 
 on:
-  release:
-    types: [created]
+  push:
+    brances: [main]
 
 jobs:
   build-release:
-    runs-on: windows-latest
+    runs-on: windows-macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -17,11 +17,13 @@ jobs:
 
       - run: npm install
 
-      - run: npm run make -- --platform=win32 --arch=x64
+      - name: Get version from package.json
+        id: get_version
+        run: echo "version=$(npm pkg get version | tr -d '\"')" >> $GITHUB_OUTPUT
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
             out/make/**/*.exe
-            out/make/**/*.msi
+            out/make/**/*.dmg
