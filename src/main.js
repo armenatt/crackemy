@@ -80,14 +80,14 @@ function getRecentlyOpenSubmenu() {
 
 function getTemplateWithSubmenu(submenu) {
   return [
-    isMac && {
+    ...(isMac ? [{
       label: app.name,
       submenu: [
         {
           role: "about",
         },
       ],
-    },
+    }] : []),
     {
       label: "File",
       submenu: [
