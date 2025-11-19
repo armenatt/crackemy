@@ -1,4 +1,4 @@
-name: Build Windows (Electron Forge)
+name: Build macOS (Electron Forge)
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build-macos:
+    runs-on: macos-latest
 
     steps:
       - name: Check out repository
@@ -19,16 +19,14 @@ jobs:
         with:
           node-version: 20
           cache: "npm"
-      - name: install rollup
-        run: npm install @rollup/rollup-win32-x64-msvc
 
       - name: Install dependencies
         run: npm install
 
-      - name: Build Windows app
-        run: npm run make -- --platform=win32 --arch=x64
+      - name: Build macOS app
+        run: npm run make -- --platform=darwin --arch=x64
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: crackemy-windows-macos-builds
+          name: crackemy-macos-build
           path: out/make/**
