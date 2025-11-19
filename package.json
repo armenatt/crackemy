@@ -1,7 +1,7 @@
 {
   "name": "crackemy",
   "productName": "crackemy",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Crackemy cool app",
   "main": ".vite/build/main.js",
   "scripts": {

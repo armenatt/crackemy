@@ -57,12 +57,16 @@ export class Config {
 
       if (isDir) {
         const sectionDir = readdirSync(sectionPath, { withFileTypes: true });
-        const subtitles = sectionDir.filter((file) =>
-          ["srt", "vtt"].includes(file.name.split(".")[1])
+        const subtitles = sectionDir.filter((file) => {
+          const format = ['srt', 'vtt'].find(format => file.name.includes(format));
+          return format;
+        }
         );
         const lessons = sectionDir
-          .filter((file) =>
-            ["mp4", "avi", "mkv"].includes(file.name.split(".")[1])
+          .filter((file) => {
+            const format = ["mp4", "avi", "mkv"].find(format => file.name.includes(format));
+            return format;
+          }
           )
           .map((file) => {
             const fileBuffer = readFileSync(
@@ -72,6 +76,7 @@ export class Config {
             const subs = subtitles.find((sub) =>
               sub.name.split(".")[0].includes(file.name.split(".")[0])
             );
+            console.log(file.name);
 
             return {
               name: file.name,
@@ -81,12 +86,13 @@ export class Config {
               done: false,
             };
           });
-
-        sections.push({ name: file, lessons });
+        if (lessons.length) {
+          sections.push({ name: file, lessons: lessons.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })) });
+        }
       }
     }
 
-    return sections;
+    return sections.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
   }
 
   createConfigJson() {
